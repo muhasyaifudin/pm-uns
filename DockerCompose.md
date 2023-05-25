@@ -451,7 +451,7 @@ docker-compose exec app composer install
 
 We’ll now run `artisan migrate` to migrate the application database:
 ```bash
-exec app php artisan key:generate migrate
+exec app php artisanupdate migrate
 ```
 
 The last thing we need to do before testing the application is to generate a unique application key with the `artisan` Laravel command-line tool. This key is used to encrypt user sessions and other sensitive data:
