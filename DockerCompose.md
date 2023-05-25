@@ -245,3 +245,216 @@ These settings do the following:
 * `working_dir`: Sets the default directory for this service as `/var/www`.
 * `volumes`: Creates a shared volume that will synchronize contents from the current directory to `/var/www` inside the container. Notice that this is not your document root, since that will live in the nginx container.
 * `networks`: Sets up this service to use a network named `praktisimengajar`.
+
+
+## The `db` Service
+
+The `db` service uses a pre-built MySQL 8.0 image from Docker Hub. Because Docker Compose automatically loads `.env` variable files located in the same directory as the `docker-compose.yml` file, we can obtain our database settings from the Laravel `.env` file we created in a previous step.
+
+Include the following service definition in your services `node`, right after the `app` service:
+
+**docker-compose.yml**
+```yml
+  db:
+    image: mysql:8.0
+    container_name: praktisimengajar-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./docker-compose/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - praktisimengajar
+```
+
+These settings do the following:
+* `image`: Defines the Docker image that should be used for this container. In this case, we’re using a MySQL 5.7 image from Docker Hub.
+* `container_name`: Sets up the container name for this service: praktisimengajar-db.
+* `restart`: Always restart this service, unless it is explicitly stopped.
+* `environment`: Defines environment variables in the new container. We’re using values obtained from the Laravel .env file to set up our MySQL service, which will automatically create a new database and user based on the provided environment variables.
+* `volumes`: Creates a volume to share a .sql database dump that will be used to initialize the application database. The MySQL image will automatically import .sql files placed in the /docker-entrypoint-initdb.d directory inside the container.
+* `networks`: Sets up this service to use a network named praktisimengajar.
+
+## The `nginx` Service
+
+The `nginx` service uses a pre-built Nginx image on top of Alpine, a lightweight Linux distribution. It creates a container named `praktisimengajar-nginx`, and it uses the ports definition to create a redirection from port 8000 on the host system to port 80 inside the container.
+
+Include the following service definition in your services node, right after the `db` service:
+
+**docker-compose.yml**
+```yml
+ nginx:
+    image: nginx:1.17-alpine
+    container_name: praktisimengajar-nginx
+    restart: unless-stopped
+    ports:
+      - 8000:80
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx:/etc/nginx/conf.d
+    networks:
+      - praktisimengajar
+```
+
+These settings do the following:
+
+* `image`: Defines the Docker image that should be used for this container. In this case, we’re using the Alpine Nginx 1.17 image.
+* `container_name`: Sets up the container name for this service: **praktisimengajar-nginx**.
+* `restart`: Always restart this service, unless it is explicitly stopped.
+* `ports`: Sets up a port redirection that will allow external access via port 8000 to the web server running on port 80 inside the container.
+* `volumes`: Creates two shared volumes. The first one will synchronize contents from the current directory to `/var/www` inside the container. This way, when you make local changes to the application files, they will be quickly reflected in the application being served by Nginx inside the container. The second volume will make sure our Nginx configuration file, located at `docker-compose/nginx/praktisimengajar.conf`, is copied to the container’s Nginx configuration folder.
+* `networks`: Sets up this service to use a network named `praktisimengajar`.
+
+
+## Finished `docker-compose.yml` File
+
+This is how our finished `docker-compose.yml` file looks like:
+```yml
+version: "3.7"
+services:
+  app:
+    build:
+      args:
+        user: sammy
+        uid: 1000
+      context: ./
+      dockerfile: Dockerfile
+    image: praktisimengajar
+    container_name: praktisimengajar-app
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+    networks:
+      - praktisimengajar
+
+  db:
+    image: mysql:8.0
+    container_name: praktisimengajar-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./docker-compose/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - praktisimengajar
+
+  nginx:
+    image: nginx:alpine
+    container_name: praktisimengajar-nginx
+    restart: unless-stopped
+    ports:
+      - 8000:80
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx:/etc/nginx/conf.d/
+    networks:
+      - praktisimengajar
+
+networks:
+  praktisimengajar:
+    driver: bridge
+```
+
+## Step 6 — Running the Application with Docker Compose
+
+We’ll now use `docker-compose` commands to build the application image and run the services we specified in our setup.
+
+Build the `app` image with the following command:
+
+```bash
+docker-compose build app
+```
+
+This command might take a few minutes to complete. You’ll see output similar to this:
+```bash
+Output
+Building app
+Sending build context to Docker daemon  377.3kB
+Step 1/11 : FROM php:7.4-fpm
+ ---> 8c08d993542f
+Step 2/11 : ARG user
+ ---> e3ce3af04d87
+Step 3/11 : ARG uid
+ ---> 30cb921ef7df
+Step 4/11 : RUN apt-get update && apt-get install -y     git     curl     libpng-dev     libonig-dev     libxml2-dev     zip     unzip
+. . .
+ ---> b6dbc7a02e95
+Step 5/11 : RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+ ---> 10ef9dde45ad
+. . .
+Step 6/11 : RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+. . .
+ ---> 920e4f09ec75
+Step 7/11 : COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+ ---> dbbcd44e44af
+Step 8/11 : RUN useradd -G www-data,root -u $uid -d /home/$user $user
+ ---> db98e899a69a
+Step 9/11 : RUN mkdir -p /home/$user/.composer &&     chown -R $user:$user /home/$user
+ ---> 5119e26ebfea
+Step 10/11 : WORKDIR /var/www
+ ---> 699c491611c0
+Step 11/11 : USER $user
+ ---> cf250fe8f1af
+Successfully built cf250fe8f1af
+Successfully tagged praktisimengajar:latest
+```
+
+When the build is finished, you can run the environment in background mode with:
+```bash
+docker-compose up -d
+```
+
+```bash
+Output
+Creating praktisimengajar-db    ... done
+Creating praktisimengajar-app   ... done
+Creating praktisimengajar-nginx ... done
+```
+
+This will run your containers in the background. To show information about the state of your active services, run:
+```bash
+docker-compose ps
+```
+
+You’ll see output like this:
+```bash
+Output
+      Name                    Command              State                  Ports                
+-----------------------------------------------------------------------------------------------
+praktisimengajar-app     docker-php-entrypoint php-fpm   Up      9000/tcp                            
+praktisimengajar-db      docker-entrypoint.sh mysqld     Up      3306/tcp, 33060/tcp                 
+praktisimengajar-nginx   nginx -g daemon off;            Up      0.0.0.0:8000->80/tcp,:::8000->80/tcp
+```
+
+Your environment is now up and running, but we still need to execute a couple commands to finish setting up the application. You can use the `docker-compose exec` command to execute commands in the service containers, such as an ls -l to show detailed information about files in the application directory:
+
+```bash
+docker-compose exec app ls -l
+```
+
+We’ll now run `composer install` to install the application dependencies:
+```bash
+docker-compose exec app rm -rf vendor composer.lock
+docker-compose exec app composer install
+```
+
+We’ll now run `artisan migrate` to migrate the application database:
+```bash
+exec app php artisan key:generate migrate
+```
+
+The last thing we need to do before testing the application is to generate a unique application key with the `artisan` Laravel command-line tool. This key is used to encrypt user sessions and other sensitive data:
+```bash
+docker-compose exec app php artisan key:generate
+```
