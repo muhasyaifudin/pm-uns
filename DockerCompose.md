@@ -2,7 +2,7 @@
 
 ## Introduction
 
-To *containerize* an application refers to the process of adapting an application and its components in order to be able to run it in lightweight environments known as containers. Such environments are isolated and disposable, and can be leveraged for developing, testing, and deploying applications to production.
+Untuk mengcontainerkan sebuah aplikasi merujuk pada proses adaptasi aplikasi beserta komponennya agar dapat dijalankan di lingkungan yang ringan yang dikenal sebagai kontainer. Lingkungan tersebut terisolasi dan dapat dibuang setelah digunakan, serta dapat digunakan untuk mengembangkan, menguji, dan mendeploy aplikasi ke produksi.
 
 In this guide, we’ll use [Docker Compose](https://docs.docker.com/compose/) to containerize a Laravel application for development. When you’re finished, you’ll have a demo Laravel application running on three separate service containers:
 
@@ -451,7 +451,7 @@ docker-compose exec app composer install
 
 We’ll now run `artisan migrate` to migrate the application database:
 ```bash
-exec app php artisanupdate migrate
+exec app php artisan migrate
 ```
 
 The last thing we need to do before testing the application is to generate a unique application key with the `artisan` Laravel command-line tool. This key is used to encrypt user sessions and other sensitive data:
