@@ -63,7 +63,7 @@ DB_PASSWORD=password
 
 ```
 
-Feel free to also change the database name, username, and password, if you wish. These variables will be leveraged in a later step where we’ll set up the `docker compose.yml` file to configure our services.
+Feel free to also change the database name, username, and password, if you wish. These variables will be leveraged in a later step where we’ll set up the `docker-compose.yml` file to configure our services.
 
 Save the file when you’re done editing. If you used nano, you can do that by pressing `Ctrl+x`, then `Y` and `Enter` to confirm.
 
@@ -85,7 +85,7 @@ Copy the following contents to your Dockerfile:
 ```dockerfile
 FROM php:7.4-fpm
 
-# Arguments defined in docker compose.yml
+# Arguments defined in docker-compose.yml
 ARG user
 ARG uid
 
@@ -136,18 +136,18 @@ When creating development environments with Docker Compose, it is often necessar
 
 We’ll now set up a folder with files that will be used to configure and initialize our service containers.
 
-To set up Nginx, a `praktisimengajar.conf` file that will contain how the application is served. Create the `docker compose/nginx` folder with:
+To set up Nginx, a `praktisimengajar.conf` file that will contain how the application is served. Create the `docker-compose/nginx` folder with:
 ```bash
-mkdir -p docker compose/nginx
+mkdir -p docker-compose/nginx
 ```
 
 Open a new file named `praktisimengajar.conf` within that directory:
 ```bash
-nano docker compose/nginx/praktisimengajar.conf
+nano docker-compose/nginx/praktisimengajar.conf
 ```
 
 Copy the following Nginx configuration to that file:
-**docker compose/nginx/praktisimengajar.conf**
+**docker-compose/nginx/praktisimengajar.conf**
 ```
 server {
     listen 80;
@@ -179,24 +179,24 @@ Save and close the file when you’re done editing.
 
 Docker Compose enables you to create multi-container environments for applications running on Docker. It uses service definitions to build fully customizable environments with multiple containers that can share networks and data volumes. This allows for a seamless integration between application components.
 
-To set up our service definitions, we’ll create a new file called `docker compose.yml`. Typically, this file is located at the root of the application folder, and it defines your containerized environment, including the base images you will use to build your containers, and how your services will interact.
+To set up our service definitions, we’ll create a new file called `docker-compose.yml`. Typically, this file is located at the root of the application folder, and it defines your containerized environment, including the base images you will use to build your containers, and how your services will interact.
 
-We’ll define three different services in our `docker compose.yml` file: `app`, `db`, and `nginx`.
+We’ll define three different services in our `docker-compose.yml` file: `app`, `db`, and `nginx`.
 
 The app service will build an image called `praktisimengajar`, based on the Dockerfile we’ve previously created. The container defined by this service will run a `php-fpm` server to parse PHP code and send the results back to the `nginx` service, which will be running on a separate container. The `mysql` service defines a container running a MySQL 5.7 server. Our services will share a bridge network named `praktisimengajar`.
 
 The application files will be synchronized on both the `app` and the `nginx` services via bind mounts. Bind mounts are useful in development environments because they allow for a performant two-way sync between host machine and containers.
 
-Create a new `docker compose.yml` file at the root of the application folder:
+Create a new `docker-compose.yml` file at the root of the application folder:
 ```bash
-nano docker compose.yml
+nano docker-compose.yml
 ```
 
-A typical `docker compose.yml` file starts with a version definition, followed by a `services` node, under which all services are defined. Shared networks are usually defined at the bottom of that file.
+A typical `docker-compose.yml` file starts with a version definition, followed by a `services` node, under which all services are defined. Shared networks are usually defined at the bottom of that file.
 
-To get started, copy this boilerplate code into your `docker compose.yml` file:
+To get started, copy this boilerplate code into your `docker-compose.yml` file:
 
-**docker compose.yml**
+**docker-compose.yml**
 ```yml
 version: "3.7"
 services:
@@ -212,13 +212,13 @@ We’ll now edit the services node to include the `app`, `db` and `nginx` servic
 
 ## The `app` Service
 
-The `app` service will set up a container named `praktisimengajar-app`. It builds a new Docker image based on a Dockerfile located in the same path as the `docker compose.yml` file. The new image will be saved locally under the name `praktisimengajar`.
+The `app` service will set up a container named `praktisimengajar-app`. It builds a new Docker image based on a Dockerfile located in the same path as the `docker-compose.yml` file. The new image will be saved locally under the name `praktisimengajar`.
 
 Even though the document root being served as the application is located in the `nginx` container, we need the application files somewhere inside the `app` container as well, so we’re able to execute command line tasks with the Laravel Artisan tool.
 
-Copy the following service definition under your services node, inside the` docker compose.yml` file:
+Copy the following service definition under your services node, inside the` docker-compose.yml` file:
 
-**docker compose.yml**
+**docker-compose.yml**
 ```yml
 app:
     build:
@@ -249,11 +249,11 @@ These settings do the following:
 
 ## The `db` Service
 
-The `db` service uses a pre-built MySQL 8.0 image from Docker Hub. Because Docker Compose automatically loads `.env` variable files located in the same directory as the `docker compose.yml` file, we can obtain our database settings from the Laravel `.env` file we created in a previous step.
+The `db` service uses a pre-built MySQL 8.0 image from Docker Hub. Because Docker Compose automatically loads `.env` variable files located in the same directory as the `docker-compose.yml` file, we can obtain our database settings from the Laravel `.env` file we created in a previous step.
 
 Include the following service definition in your services `node`, right after the `app` service:
 
-**docker compose.yml**
+**docker-compose.yml**
 ```yml
   db:
     image: mysql:5.7
@@ -271,7 +271,7 @@ Include the following service definition in your services `node`, right after th
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql
     volumes:
-      - ./docker compose/mysql:/docker-entrypoint-initdb.d
+      - ./docker-compose/mysql:/docker-entrypoint-initdb.d
     networks:
       - praktisimengajar
 ```
@@ -290,7 +290,7 @@ The `nginx` service uses a pre-built Nginx image on top of Alpine, a lightweight
 
 Include the following service definition in your services node, right after the `db` service:
 
-**docker compose.yml**
+**docker-compose.yml**
 ```yml
  nginx:
     image: nginx:1.17-alpine
@@ -300,7 +300,7 @@ Include the following service definition in your services node, right after the 
       - 8000:80
     volumes:
       - ./:/var/www
-      - ./docker compose/nginx:/etc/nginx/conf.d
+      - ./docker-compose/nginx:/etc/nginx/conf.d
     networks:
       - praktisimengajar
 ```
@@ -311,13 +311,13 @@ These settings do the following:
 * `container_name`: Sets up the container name for this service: **praktisimengajar-nginx**.
 * `restart`: Always restart this service, unless it is explicitly stopped.
 * `ports`: Sets up a port redirection that will allow external access via port 8000 to the web server running on port 80 inside the container.
-* `volumes`: Creates two shared volumes. The first one will synchronize contents from the current directory to `/var/www` inside the container. This way, when you make local changes to the application files, they will be quickly reflected in the application being served by Nginx inside the container. The second volume will make sure our Nginx configuration file, located at `docker compose/nginx/praktisimengajar.conf`, is copied to the container’s Nginx configuration folder.
+* `volumes`: Creates two shared volumes. The first one will synchronize contents from the current directory to `/var/www` inside the container. This way, when you make local changes to the application files, they will be quickly reflected in the application being served by Nginx inside the container. The second volume will make sure our Nginx configuration file, located at `docker-compose/nginx/praktisimengajar.conf`, is copied to the container’s Nginx configuration folder.
 * `networks`: Sets up this service to use a network named `praktisimengajar`.
 
 
-## Finished `docker compose.yml` File
+## Finished `docker-compose.yml` File
 
-This is how our finished `docker compose.yml` file looks like:
+This is how our finished `docker-compose.yml` file looks like:
 ```yml
 version: "3.7"
 services:
@@ -353,7 +353,7 @@ services:
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql
     volumes:
-      - ./docker compose/mysql:/docker-entrypoint-initdb.d
+      - ./docker-compose/mysql:/docker-entrypoint-initdb.d
     networks:
       - praktisimengajar
 
@@ -365,7 +365,7 @@ services:
       - 8000:80
     volumes:
       - ./:/var/www
-      - ./docker compose/nginx:/etc/nginx/conf.d/
+      - ./docker-compose/nginx:/etc/nginx/conf.d/
     networks:
       - praktisimengajar
 
@@ -376,12 +376,12 @@ networks:
 
 ## Step 6 — Running the Application with Docker Compose
 
-We’ll now use `docker compose` commands to build the application image and run the services we specified in our setup.
+We’ll now use `docker-compose` commands to build the application image and run the services we specified in our setup.
 
 Build the `app` image with the following command:
 
 ```bash
-docker compose build app
+docker-compose build app
 ```
 
 This command might take a few minutes to complete. You’ll see output similar to this:
@@ -420,7 +420,7 @@ Successfully tagged praktisimengajar:latest
 
 When the build is finished, you can run the environment in background mode with:
 ```bash
-docker compose up -d
+docker-compose up -d
 ```
 
 ```bash
@@ -432,7 +432,7 @@ Creating praktisimengajar-nginx ... done
 
 This will run your containers in the background. To show information about the state of your active services, run:
 ```bash
-docker compose ps
+docker-compose ps
 ```
 
 You’ll see output like this:
@@ -445,24 +445,24 @@ praktisimengajar-db      docker-entrypoint.sh mysqld     Up      3306/tcp, 33060
 praktisimengajar-nginx   nginx -g daemon off;            Up      0.0.0.0:8000->80/tcp,:::8000->80/tcp
 ```
 
-Your environment is now up and running, but we still need to execute a couple commands to finish setting up the application. You can use the `docker compose exec` command to execute commands in the service containers, such as an ls -l to show detailed information about files in the application directory:
+Your environment is now up and running, but we still need to execute a couple commands to finish setting up the application. You can use the `docker-compose exec` command to execute commands in the service containers, such as an ls -l to show detailed information about files in the application directory:
 
 ```bash
-docker compose exec app ls -l
+docker-compose exec app ls -l
 ```
 
 We’ll now run `composer install` to install the application dependencies:
 ```bash
-docker compose exec app rm -rf vendor composer.lock
-docker compose exec app composer install
+docker-compose exec app rm -rf vendor composer.lock
+docker-compose exec app composer install
 ```
 
 We’ll now run `artisan migrate` to migrate the application database:
 ```bash
-docker compose exec app php artisan migrate
+docker-compose exec app php artisan migrate
 ```
 
 The last thing we need to do before testing the application is to generate a unique application key with the `artisan` Laravel command-line tool. This key is used to encrypt user sessions and other sensitive data:
 ```bash
-docker compose exec app php artisan key:generate
+docker-compose exec app php artisan key:generate
 ```
